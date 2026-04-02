@@ -32,14 +32,19 @@ class NormalizedConfig:
     """
 
     def __init__(self, config: Union["PretrainedConfig", Dict], *args, **kwargs):
+        if len(args) > 1:
+            raise TypeError(
+                f"{self.__class__.__name__}() takes at most 2 positional arguments (including config) but {len(args) + 1} were given"
+            )
+
         no_value = object()
         allow_new_from_kwargs = kwargs.pop("allow_new", no_value)
-        if len(args) > 1:
-            raise TypeError(f"{self.__class__.__name__}() takes at most 2 positional arguments but {len(args) + 1} were given")
         if len(args) == 1:
-            allow_new = allow_new_from_kwargs if allow_new_from_kwargs is not no_value else args[0]
+            if allow_new_from_kwargs is not no_value:
+                raise TypeError(f"{self.__class__.__name__}() got multiple values for argument 'allow_new'")
+            allow_new = args[0]
         else:
-            allow_new = False if allow_new_from_kwargs is no_value else allow_new_from_kwargs
+            allow_new = allow_new_from_kwargs if allow_new_from_kwargs is not no_value else False
 
         self.config = config
         for key, value in kwargs.items():
@@ -52,9 +57,8 @@ class NormalizedConfig:
 
     @classmethod
     def with_args(cls, allow_new: bool = False, **kwargs) -> Callable[["PretrainedConfig"], "NormalizedConfig"]:
-        if "allow_new" in kwargs:
-            allow_new = kwargs.pop("allow_new")
-        return functools.partial(cls, allow_new=allow_new, **kwargs)
+        kwargs.setdefault("allow_new", allow_new)
+        return functools.partial(cls, **kwargs)
 
     def __getattr__(self, attr_name):
         if attr_name == "config":
